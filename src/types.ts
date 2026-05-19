@@ -29,6 +29,11 @@ export interface StreakData {
 export interface AppSettings {
   wpm: number
   googleApiKey: string
+  readAloud: boolean
+  smartPauses: boolean
+  bionicReading: boolean
+  speechRate: number
+  speechVoiceUri: string
 }
 
 export type Tab = 'library' | 'streak' | 'settings'

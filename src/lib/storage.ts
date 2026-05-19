@@ -17,6 +17,11 @@ const DEFAULT_STREAK: StreakData = {
 const DEFAULT_SETTINGS: AppSettings = {
   wpm: 300,
   googleApiKey: '',
+  readAloud: false,
+  smartPauses: true,
+  bionicReading: false,
+  speechRate: 1,
+  speechVoiceUri: '',
 }
 
 function openDb(): Promise<IDBDatabase> {

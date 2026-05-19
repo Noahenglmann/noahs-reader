@@ -68,17 +68,12 @@ export async function downloadDriveFile(fileId: string): Promise<ArrayBuffer> {
   return response.arrayBuffer()
 }
 
-/** List files in a public folder via Google Drive API */
-export async function listFolderFiles(
+const FOLDER_MIME = 'application/vnd.google-apps.folder'
+
+async function listFolderContents(
   folderId: string,
   apiKey: string,
 ): Promise<DriveFile[]> {
-  if (!apiKey) {
-    throw new Error(
-      'A Google API key is required to import folders. Add one in Settings.',
-    )
-  }
-
   const files: DriveFile[] = []
   let pageToken: string | undefined
 
@@ -110,7 +105,56 @@ export async function listFolderFiles(
     pageToken = data.nextPageToken
   } while (pageToken)
 
+  return files
+}
+
+/** List book files in a folder (non-recursive) */
+export async function listFolderFiles(
+  folderId: string,
+  apiKey: string,
+): Promise<DriveFile[]> {
+  if (!apiKey) {
+    throw new Error(
+      'A Google API key is required. Add VITE_GOOGLE_API_KEY or set one in Settings.',
+    )
+  }
+  const files = await listFolderContents(folderId, apiKey)
   return files.filter((f) => formatFromMime(f.mimeType, f.name) !== null)
+}
+
+/** Recursively find all EPUB/PDF/MOBI files under a folder */
+export async function listAllBooksRecursive(
+  rootFolderId: string,
+  apiKey: string,
+): Promise<DriveFile[]> {
+  if (!apiKey) {
+    throw new Error(
+      'A Google API key is required. Add VITE_GOOGLE_API_KEY or set one in Settings.',
+    )
+  }
+
+  const books: DriveFile[] = []
+  const queue = [rootFolderId]
+
+  while (queue.length > 0) {
+    const folderId = queue.shift()!
+    const items = await listFolderContents(folderId, apiKey)
+
+    for (const item of items) {
+      if (item.mimeType === FOLDER_MIME) {
+        queue.push(item.id)
+      } else if (formatFromMime(item.mimeType, item.name)) {
+        books.push(item)
+      }
+    }
+  }
+
+  return books
+}
+
+export function getGoogleApiKey(settingsKey: string): string {
+  const envKey = import.meta.env.VITE_GOOGLE_API_KEY as string | undefined
+  return (envKey?.trim() || settingsKey.trim())
 }
 
 export async function getDriveFileMeta(

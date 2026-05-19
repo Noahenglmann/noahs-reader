@@ -1,9 +1,20 @@
-import { useCallback, useEffect, useState } from 'react'
-import type { Book } from '../types'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { AppSettings, Book } from '../types'
 import { useReader } from '../hooks/useReader'
+import { useSpeech } from '../hooks/useSpeech'
 import { extractWords } from '../lib/parsers'
-import { getBookData, getProgress, saveProgress, recordWordsRead } from '../lib/storage'
-import { getSettings } from '../lib/storage'
+import {
+  getBookData,
+  getProgress,
+  saveProgress,
+  recordWordsRead,
+  getSettings,
+} from '../lib/storage'
+import { formatTimeRemaining, wordsPerPageForScreen } from '../lib/readingUtils'
+import { ClassicView } from './ClassicView'
+import { RsvpView } from './RsvpView'
+
+type ReaderMode = 'classic' | 'rsvp'
 
 interface ReaderProps {
   book: Book
@@ -15,8 +26,15 @@ export function Reader({ book, onClose, onStreakUpdate }: ReaderProps) {
   const [words, setWords] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [wpm, setWpm] = useState(getSettings().wpm)
-  const [showControls, setShowControls] = useState(false)
+  const [settings, setSettings] = useState<AppSettings>(getSettings)
+  const [mode, setMode] = useState<ReaderMode>('classic')
+  const [readAloud, setReadAloud] = useState(settings.readAloud)
+  const [wpm, setWpm] = useState(settings.wpm)
+  const [fontSize, setFontSize] = useState(18)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const wordsPerPage = wordsPerPageForScreen()
+  const { supported: speechSupported, speakWord, cancel: cancelSpeech } = useSpeech()
 
   const startIndex = getProgress(book.id)?.wordIndex ?? 0
 
@@ -51,9 +69,30 @@ export function Reader({ book, onClose, onStreakUpdate }: ReaderProps) {
     words,
     startIndex,
     wpm,
+    smartPauses: settings.smartPauses,
     onWordRead: handleWordRead,
   })
 
+  // TTS: speak current word when in RSVP mode with read-aloud on
+  useEffect(() => {
+    if (mode !== 'rsvp' || !reader.playing || !readAloud) return
+    speakWord(reader.currentWord, settings.speechRate, settings.speechVoiceUri || undefined)
+  }, [
+    reader.index,
+    reader.currentWord,
+    mode,
+    reader.playing,
+    readAloud,
+    speakWord,
+    settings.speechRate,
+    settings.speechVoiceUri,
+  ])
+
+  useEffect(() => {
+    if (!reader.playing) cancelSpeech()
+  }, [reader.playing, cancelSpeech])
+
+  // Save progress periodically
   useEffect(() => {
     const id = setInterval(() => {
       saveProgress({
@@ -72,8 +111,55 @@ export function Reader({ book, onClose, onStreakUpdate }: ReaderProps) {
         wordIndex: reader.index,
         updatedAt: Date.now(),
       })
+      cancelSpeech()
     }
-  }, [book.id, reader.index])
+  }, [book.id, reader.index, cancelSpeech])
+
+  const enterRsvp = useCallback(async () => {
+    setMode('rsvp')
+    const el = containerRef.current
+    if (el?.requestFullscreen) {
+      try {
+        await el.requestFullscreen()
+      } catch {
+        /* fullscreen optional */
+      }
+    }
+    reader.play()
+  }, [reader])
+
+  const exitRsvp = useCallback(async () => {
+    reader.pause()
+    cancelSpeech()
+    setMode('classic')
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen()
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [reader, cancelSpeech])
+
+  const handlePlayPause = useCallback(() => {
+    if (mode === 'rsvp' && reader.playing) {
+      exitRsvp()
+    } else {
+      enterRsvp()
+    }
+  }, [mode, reader.playing, enterRsvp, exitRsvp])
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement && mode === 'rsvp') {
+        reader.pause()
+        cancelSpeech()
+        setMode('classic')
+      }
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [mode, reader, cancelSpeech])
 
   if (loading) {
     return (
@@ -94,79 +180,81 @@ export function Reader({ book, onClose, onStreakUpdate }: ReaderProps) {
     )
   }
 
-  const { currentWord, orpIndex, playing, progress, toggle, skip } = reader
-
-  const before = currentWord.slice(0, orpIndex)
-  const orp = currentWord[orpIndex] ?? ''
-  const after = currentWord.slice(orpIndex + 1)
+  const timeLeft = formatTimeRemaining(reader.wordsLeft, wpm)
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-surface select-none"
-      onClick={() => {
-        toggle()
-        setShowControls(false)
-      }}
+      ref={containerRef}
+      className={`fixed inset-0 z-50 flex flex-col bg-surface select-none ${
+        mode === 'rsvp' ? 'bg-black' : ''
+      }`}
     >
-      {/* Progress bar */}
-      <div className="safe-top h-1 w-full bg-surface-overlay">
-        <div
-          className="h-full bg-accent transition-all duration-150"
-          style={{ width: `${progress * 100}%` }}
-        />
+      {/* Header — hidden in fullscreen RSVP for immersion */}
+      {mode === 'classic' && (
+        <header className="safe-top flex shrink-0 items-center justify-between px-5 py-3">
+          <button type="button" onClick={onClose} className="text-sm text-muted">
+            ← Back
+          </button>
+          <h2 className="max-w-[50%] truncate text-sm font-medium">{book.title}</h2>
+          <span className="text-xs text-muted">{timeLeft} left</span>
+        </header>
+      )}
+
+      {/* Main content */}
+      <div className="min-h-0 flex-1">
+        {mode === 'rsvp' ? (
+          <RsvpView word={reader.currentWord} progress={reader.progress} />
+        ) : (
+          <ClassicView
+            words={words}
+            currentIndex={reader.index}
+            wordsPerPage={wordsPerPage}
+            bionicReading={settings.bionicReading}
+            fontSize={fontSize}
+            onWordTap={reader.seek}
+            onPageNav={(dir) => {
+              const target = dir === -1
+                ? Math.max(0, reader.index - wordsPerPage)
+                : Math.min(words.length - 1, reader.index + wordsPerPage)
+              reader.seek(target)
+            }}
+          />
+        )}
       </div>
 
-      {/* Word display */}
-      <div className="flex flex-1 items-center justify-center px-6">
-        <div className="relative text-center">
-          {/* ORP guide line */}
-          <div className="absolute left-1/2 top-1/2 h-12 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-orp/30" />
-          <div
-            className="font-semibold tracking-wide"
-            style={{ fontSize: 'clamp(2rem, 8vw, 3.5rem)' }}
-          >
-            <span className="text-text/70">{before}</span>
-            <span className="text-orp">{orp}</span>
-            <span className="text-text/70">{after}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom controls — tap-hold area */}
-      <div
-        className="safe-bottom px-6 pb-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between text-sm text-muted">
+      {/* Bottom controls — always visible */}
+      <div className="safe-bottom shrink-0 border-t border-surface-overlay bg-surface-raised/95 px-5 pb-5 pt-3 backdrop-blur-lg">
+        <div className="mb-3 flex items-center justify-between text-xs text-muted">
           <span>
             {reader.index + 1} / {words.length}
           </span>
-          <span>{wpm} WPM</span>
+          <span>{wpm} WPM · {timeLeft}</span>
         </div>
 
-        <div
-          className={`mt-4 flex items-center justify-center gap-6 transition-opacity ${
-            showControls || !playing ? 'opacity-100' : 'opacity-0'
-          }`}
-        >
+        <div className="flex items-center justify-center gap-4">
           <button
             type="button"
-            onClick={() => skip(-10)}
-            className="rounded-full bg-surface-overlay px-4 py-2 text-sm"
+            onClick={() => reader.skip(-10)}
+            className="rounded-full bg-surface-overlay px-3 py-2 text-sm"
+            aria-label="Skip back 10 words"
           >
             −10
           </button>
+
           <button
             type="button"
-            onClick={toggle}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-accent text-lg font-semibold text-white"
+            onClick={handlePlayPause}
+            className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-xl font-semibold text-white shadow-lg shadow-accent/30"
+            aria-label={mode === 'rsvp' && reader.playing ? 'Pause' : 'Play'}
           >
-            {playing ? '❚❚' : '▶'}
+            {mode === 'rsvp' && reader.playing ? '❚❚' : '▶'}
           </button>
+
           <button
             type="button"
-            onClick={() => skip(10)}
-            className="rounded-full bg-surface-overlay px-4 py-2 text-sm"
+            onClick={() => reader.skip(10)}
+            className="rounded-full bg-surface-overlay px-3 py-2 text-sm"
+            aria-label="Skip forward 10 words"
           >
             +10
           </button>
@@ -179,21 +267,61 @@ export function Reader({ book, onClose, onStreakUpdate }: ReaderProps) {
           step={25}
           value={wpm}
           onChange={(e) => setWpm(Number(e.target.value))}
-          onClick={(e) => e.stopPropagation()}
-          className="mt-4 w-full accent-accent"
+          className="mt-3 w-full accent-accent"
+          aria-label="Reading speed"
         />
 
-        <div className="mt-3 flex justify-between gap-2">
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
+          {speechSupported && (
+            <button
+              type="button"
+              onClick={() => setReadAloud((r) => !r)}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                readAloud
+                  ? 'bg-accent/20 text-accent'
+                  : 'bg-surface-overlay text-muted'
+              }`}
+            >
+              {readAloud ? '🔊 Read aloud on' : '🔇 Read aloud off'}
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={() => setShowControls((s) => !s)}
-            className="text-xs text-muted"
+            onClick={() =>
+              setSettings((s) => ({ ...s, bionicReading: !s.bionicReading }))
+            }
+            className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+              settings.bionicReading
+                ? 'bg-accent/20 text-accent'
+                : 'bg-surface-overlay text-muted'
+            }`}
           >
-            {showControls ? 'Hide' : 'Show'} controls
+            Bionic {settings.bionicReading ? 'on' : 'off'}
           </button>
-          <button type="button" onClick={onClose} className="text-xs text-muted">
-            Exit reader
-          </button>
+
+          <div className="flex items-center gap-1 text-xs text-muted">
+            <span>Aa</span>
+            <input
+              type="range"
+              min={14}
+              max={24}
+              value={fontSize}
+              onChange={(e) => setFontSize(Number(e.target.value))}
+              className="w-16 accent-accent"
+              aria-label="Font size"
+            />
+          </div>
+
+          {mode === 'rsvp' && (
+            <button
+              type="button"
+              onClick={exitRsvp}
+              className="rounded-full bg-surface-overlay px-3 py-1.5 text-xs text-muted"
+            >
+              Page view
+            </button>
+          )}
         </div>
       </div>
     </div>
