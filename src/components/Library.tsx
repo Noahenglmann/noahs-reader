@@ -121,8 +121,8 @@ export function Library({ books, onBooksChange, onOpenBook }: LibraryProps) {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <header className="safe-top shrink-0 px-5 pb-4 pt-2">
-        <h1 className="text-2xl font-bold tracking-tight">Noah&apos;s Reader</h1>
-        <p className="mt-1 text-sm text-muted">Your books from Google Drive</p>
+        <h1 className="text-2xl font-serif font-bold tracking-tight">Noah&apos;s Reader</h1>
+        <p className="mt-1 text-sm text-muted font-serif">Your books from Google Drive</p>
       </header>
 
       <div className="flex-1 overflow-y-auto px-5 pb-4">
@@ -169,26 +169,25 @@ export function Library({ books, onBooksChange, onOpenBook }: LibraryProps) {
                 type="button"
                 onClick={syncLibrary}
                 disabled={syncing}
-                className="text-xs text-accent disabled:opacity-40"
+                className="text-xs text-accent font-serif font-semibold disabled:opacity-40 hover:scale-110 transition-transform"
               >
-                {syncing ? 'Syncing…' : 'Refresh library'}
+                {syncing ? 'Syncing…' : 'Refresh'}
               </button>
             </div>
             <ul className="space-y-3">
               {books.map((book) => (
                 <li
                   key={book.id}
-                  className="flex items-center gap-3 rounded-2xl bg-surface-raised p-4"
+                  className="bubble-card flex items-center gap-4 cursor-pointer hover:scale-105 transition-transform active:scale-95"
                 >
                   <button
                     type="button"
                     onClick={() => onOpenBook(book)}
                     className="flex flex-1 flex-col items-start text-left"
                   >
-                    <span className="font-medium leading-snug">{book.title}</span>
-                    <span className="mt-1 text-xs text-muted">
-                      {book.format.toUpperCase()} ·{' '}
-                      {book.wordCount.toLocaleString()} words
+                    <span className="font-serif text-lg font-semibold leading-snug">{book.title}</span>
+                    <span className="mt-1.5 text-sm text-muted font-serif">
+                      {book.format.toUpperCase()} · {book.wordCount.toLocaleString()} words
                       {(() => {
                         const p = getProgress(book.id)
                         if (!p || p.wordIndex === 0) return null
@@ -200,7 +199,7 @@ export function Library({ books, onBooksChange, onOpenBook }: LibraryProps) {
                   <button
                     type="button"
                     onClick={() => handleDelete(book)}
-                    className="shrink-0 rounded-lg px-2 py-1 text-xs text-red-400/80"
+                    className="shrink-0 text-accent hover:text-red-400 transition-colors text-2xl active:scale-75"
                     aria-label="Remove from library"
                   >
                     ✕
