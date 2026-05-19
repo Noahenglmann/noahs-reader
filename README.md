@@ -2,6 +2,8 @@
 
 A mobile-first web app for **RSVP speed reading** — words appear one at a time in the center of the screen so you can reach a flow state while reading.
 
+**Repo:** https://github.com/Noahenglmann/noahs-reader
+
 **Live site:** https://noahenglmann.github.io/noahs-reader/
 
 ## Features
