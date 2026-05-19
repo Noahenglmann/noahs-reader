@@ -5,10 +5,10 @@ interface NavBottomProps {
   onChange: (tab: Tab) => void
 }
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'library', label: 'Library', icon: '📚' },
-  { id: 'streak', label: 'Streak', icon: '🔥' },
-  { id: 'settings', label: 'Settings', icon: '⚙️' },
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'library', label: 'Library' },
+  { id: 'streak', label: 'Streak' },
+  { id: 'settings', label: 'Settings' },
 ]
 
 export function NavBottom({ active, onChange }: NavBottomProps) {
@@ -26,7 +26,6 @@ export function NavBottom({ active, onChange }: NavBottomProps) {
                 : 'text-muted hover:text-text'
             }`}
           >
-            <span className="text-2xl">{tab.icon}</span>
             <span className="text-xs font-semibold">{tab.label}</span>
           </button>
         ))}

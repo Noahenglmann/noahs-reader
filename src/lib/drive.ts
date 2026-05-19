@@ -81,29 +81,33 @@ async function listFolderContents(
   do {
     const params = new URLSearchParams({
       q: `'${folderId}' in parents and trashed=false`,
-      fields: 'nextPageToken,files(id,name,mimeType)',
+      fields: 'nextPageToken,files(id,name,mimeType,size)',
       key: apiKey,
       pageSize: '100',
     })
     if (pageToken) params.set('pageToken', pageToken)
 
-    const res = await fetch(
-      `https://www.googleapis.com/drive/v3/files?${params}`,
-    )
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}))
-      throw new Error(
-        (err as { error?: { message?: string } }).error?.message ??
-          'Failed to list folder. Check your API key and folder sharing.',
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files?${params}`,
       )
-    }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(
+          (err as { error?: { message?: string } }).error?.message ??
+            'Failed to list folder. Check your folder sharing settings - folder must be shared as "Anyone with the link".',
+        )
+      }
 
-    const data = (await res.json()) as {
-      files: DriveFile[]
-      nextPageToken?: string
+      const data = (await res.json()) as {
+        files: DriveFile[]
+        nextPageToken?: string
+      }
+      files.push(...data.files)
+      pageToken = data.nextPageToken
+    } catch (e) {
+      throw e instanceof Error ? e : new Error('Network error accessing Google Drive')
     }
-    files.push(...data.files)
-    pageToken = data.nextPageToken
   } while (pageToken)
 
   return files

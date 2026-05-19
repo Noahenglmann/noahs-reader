@@ -34,7 +34,7 @@ export function Streak({ streak, onStreakChange }: StreakProps) {
       <div className="flex-1 overflow-y-auto px-5 pb-4">
         {/* Streak flame */}
         <div className="bubble-card mb-6 flex flex-col items-center py-8">
-          <span className="text-6xl">{streak.currentStreak > 0 ? '🔥' : '💤'}</span>
+          <span className="text-sm text-accent font-serif font-semibold">{streak.currentStreak > 0 ? 'Active' : 'Inactive'}</span>
           <p className="mt-3 text-4xl font-serif font-bold text-streak">{streak.currentStreak}</p>
           <p className="text-sm text-muted font-serif">day streak</p>
           {streak.longestStreak > 0 && (
@@ -50,7 +50,7 @@ export function Streak({ streak, onStreakChange }: StreakProps) {
             <h2 className="text-sm font-medium text-muted font-serif">Today&apos;s goal</h2>
             {goalMet && (
               <span className="rounded-full bg-accent/20 px-2 py-0.5 text-xs text-accent font-serif">
-                ✓ Done
+                Complete
               </span>
             )}
           </div>
@@ -112,7 +112,7 @@ export function Streak({ streak, onStreakChange }: StreakProps) {
           </div>
           <div className="bubble-card p-4 text-center">
             <p className="text-2xl font-serif font-bold">
-              {streak.lastReadDate === today ? '✓' : '—'}
+              {streak.lastReadDate === today ? 'Yes' : 'No'}
             </p>
             <p className="mt-1 text-xs text-muted font-serif">Read today</p>
           </div>

@@ -121,7 +121,7 @@ export function Settings({ settings, onSettingsChange }: SettingsProps) {
           onClick={handleSave}
           className="w-full bubble-card bg-accent text-white py-3 font-serif font-semibold hover:scale-105 transition-transform active:scale-95"
         >
-          {saved ? '✓ Saved!' : 'Save settings'}
+          {saved ? 'Saved' : 'Save settings'}
         </button>
 
         <section className="bubble-card mt-8 text-sm text-muted">
