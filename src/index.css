@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --color-surface: #0a0a0f;
+  --color-surface-raised: #14141c;
+  --color-surface-overlay: #1c1c28;
+  --color-accent: #7c6cff;
+  --color-accent-dim: #5a4fd4;
+  --color-streak: #ff8c42;
+  --color-orp: #ff6b6b;
+  --color-muted: #6b6b80;
+  --color-text: #f0f0f5;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-surface);
+  color: var(--color-text);
+  overscroll-behavior: none;
+}
+
+.safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.safe-top {
+  padding-top: max(0.5rem, env(safe-area-inset-top));
+}
