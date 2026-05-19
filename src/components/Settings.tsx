@@ -11,7 +11,6 @@ interface SettingsProps {
 export function Settings({ settings, onSettingsChange }: SettingsProps) {
   const { voices } = useSpeech()
   const [wpm, setWpm] = useState(settings.wpm)
-  const [apiKey, setApiKey] = useState(settings.googleApiKey)
   const [readAloud, setReadAloud] = useState(settings.readAloud)
   const [smartPauses, setSmartPauses] = useState(settings.smartPauses)
   const [bionicReading, setBionicReading] = useState(settings.bionicReading)
@@ -22,7 +21,7 @@ export function Settings({ settings, onSettingsChange }: SettingsProps) {
   function handleSave() {
     const updated: AppSettings = {
       wpm: Math.max(100, Math.min(800, wpm)),
-      googleApiKey: apiKey.trim(),
+      googleApiKey: '', // No longer used - API key is hardcoded
       readAloud,
       smartPauses,
       bionicReading,
@@ -116,33 +115,6 @@ export function Settings({ settings, onSettingsChange }: SettingsProps) {
               </select>
             </div>
           )}
-        </section>
-
-        <section className="mb-6 rounded-2xl bg-surface-raised p-5">
-          <label htmlFor="api-key" className="text-sm font-medium text-muted">
-            Google API key
-          </label>
-          <p className="mt-1 mb-3 text-xs text-muted">
-            Required to load books from your Drive library (synced automatically on
-            open).{' '}
-            <a
-              href="https://console.cloud.google.com/apis/credentials"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent underline"
-            >
-              Get a free key
-            </a>{' '}
-            and enable the Google Drive API.
-          </p>
-          <input
-            id="api-key"
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="AIza…"
-            className="w-full rounded-xl bg-surface-overlay px-4 py-3 text-sm outline-none placeholder:text-muted/60 focus:ring-2 focus:ring-accent/50"
-          />
         </section>
 
         <button

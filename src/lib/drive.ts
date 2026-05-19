@@ -1,5 +1,6 @@
 import type { BookFormat } from '../types'
 import { detectFormat } from './parsers'
+import { GOOGLE_API_KEY } from './driveConfig'
 
 export interface DriveFile {
   id: string
@@ -152,9 +153,9 @@ export async function listAllBooksRecursive(
   return books
 }
 
-export function getGoogleApiKey(settingsKey: string): string {
-  const envKey = import.meta.env.VITE_GOOGLE_API_KEY as string | undefined
-  return (envKey?.trim() || settingsKey.trim())
+export function getGoogleApiKey(_settingsKey: string): string {
+  // Always use hardcoded API key - user input no longer needed
+  return GOOGLE_API_KEY
 }
 
 export async function getDriveFileMeta(
